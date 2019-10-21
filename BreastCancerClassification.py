@@ -5,7 +5,7 @@ Created on Mon Oct 21 14:25:01 2019
 
 @author: Vanessa Chantreau
 
-this file is an example of the use of SVM model to predict the cancer from dataset "breast cancer wisconsin"
+this file is an example of the use of SVC model to predict the cancer from dataset "breast cancer wisconsin"
 """
 import pandas as pd
 import numpy as np
