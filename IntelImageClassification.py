@@ -12,7 +12,8 @@ This is image data of Natural Scenes around the world.
 Content
 -------
 This Data contains around 25k images of size 150x150 distributed under 6 categories. {'buildings' -> 0, 'forest' -> 1, 'glacier' -> 2, 'mountain' -> 3, 'sea' -> 4, 'street' -> 5 }
-The Train, Test and Prediction data is separated in each zip files. There are around 14k images in Train, 3k in Test and 7k in Prediction. This data was initially published on https://datahack.analyticsvidhya.com by Intel to host a Image classification Challenge.
+The Train, Test and Prediction data is separated in each zip files. There are around 14k images in Train, 3k in Test and 7k in Prediction. 
+This data was initially published on https://datahack.analyticsvidhya.com by Intel to host a Image classification Challenge.
 """
 
 # building the CNN
@@ -28,7 +29,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 
-# steps_per_epoch=800, validation_steps=80 test acc=0.7880 - 2646 sec
+
 # softmax activation function for the last hidden layer and loss=categorical_crossentropy are required for the classification of more than 2 categoriries (not binary)
 # batch_size=nb of sample randomly selected from the dataset. the gradient algo will update loss at the end of each batch, so the parameters are updated too.
 # steps_per_epoch=nb training dataset batchs to input per epoch. To have the whole training data set, use at min (size of the training dataset)/(training_set batch_size)
@@ -69,6 +70,8 @@ for i in np.arange(W_grid*L_grid):
 plt.subplots_adjust(hspace=0.4)
 
 # create and train the model (2646 sec on Intel i7 9700K 4.20GHz)
+# steps_per_epoch=800, validation_steps=80 test acc=0.7753 - 2646 sec
+# steps_per_epoch=800, validation_steps=800 test acc=0.7680 - 2948 sec
 classifier = Sequential()
 classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
@@ -84,7 +87,7 @@ history = classifier.fit_generator(
         steps_per_epoch=800,
         epochs=10,
         validation_data=test_set,
-        validation_steps=80)
+        validation_steps=800)
 t1 = time.time()
 print("took %0.2f seconds"% (t1 - t0))
 score = classifier.evaluate(test_set)
@@ -100,7 +103,10 @@ plt.show()
 # => it shows overfitting !
 
 # try another model
-# try bigger batch_size 256, steps_per_epoch=100, validation steps=20, 2 dropout layers test acc = 0.7657 - 572 sec
+# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=10 test acc = 0.7363 - 367 sec - no overfit
+# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=50 test acc = 0.7800 - 1837 sec - from 20 epochs, overfitting begin
+# try bigger batch_size 256, steps_per_epoch=110, validation steps=110, 2 dropout layers test acc = 0.7587 - 733
+# try bigger batch_size 256, steps_per_epoch=110, validation steps=55, 4 epochs, 2 dropout layers test acc = 0.7390 - 252 sec
 datagenerator = ImageDataGenerator(rescale=1./255)
 # the original size of the images is 150x150 pixels
 training_set = datagenerator.flow_from_directory('IntelImageData/seg_train',
@@ -124,12 +130,13 @@ classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['ac
 t0 = time.time()
 history = classifier.fit_generator(
         training_set,
-        steps_per_epoch=55,#60,#100,
-        epochs=10,
+        steps_per_epoch=55,
+        epochs=50,
         validation_data=test_set,
-        validation_steps=60)
+        validation_steps=55)
 t1 = time.time()
 print("took %0.2f seconds"% (t1 - t0))
+
 score = classifier.evaluate(test_set)
 
 # visualize the accuracy history
@@ -140,6 +147,7 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
+# training curve is below validation: no overfitting
 
 # visualize the accuracy per class
 
