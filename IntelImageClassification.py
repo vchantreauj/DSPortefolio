@@ -38,18 +38,23 @@ import tensorflow as tf
 # validation_steps=nb validation dataset batchs to calcul the loss function at the end of each epoch. Not used to train the model. Usefull the detect overfitting.
 # ***************************************************************************
 
-# get the images
+# for GPU proccessing #
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+# end for GPU processing
+
 datagenerator = ImageDataGenerator(rescale=1./255)
 # the original size of the images is 150x150 pixels
 training_set = datagenerator.flow_from_directory('IntelImageData/seg_train',
                                                 target_size=(64, 64),
                                                 class_mode = 'categorical',
-                                                batch_size=128)
+                                                batch_size=256)
 
 test_set = datagenerator.flow_from_directory('IntelImageData/seg_test',
                                              target_size=(64,64),
                                              class_mode = 'categorical',
-                                             batch_size=128)
+                                             batch_size=256)
 
 # visualize the images from the training set
 dict_label = ['buildings','forest','glacier', 'mountain', 'sea', 'street']
@@ -70,75 +75,11 @@ for i in np.arange(W_grid*L_grid):
     
 plt.subplots_adjust(hspace=0.4)
 
-# create and train the model (2646 sec on Intel i7 9700K 4.20GHz)
-# steps_per_epoch=800, validation_steps=80 test acc=0.7753 - 2646 sec
-# steps_per_epoch=800, validation_steps=800 test acc=0.7680 - 2948 sec
-classifier = Sequential()
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Flatten())
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5)) # second one
-classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
-t0 = time.time()
-history = classifier.fit_generator(
-        training_set,
-        steps_per_epoch=800,
-        epochs=10,
-        validation_data=test_set,
-        validation_steps=800)
-t1 = time.time()
-print("took %0.2f seconds"% (t1 - t0))
-score = classifier.evaluate(test_set)
-
-# visualize the accuracy history
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
-plt.show()
-# => it shows overfitting !
-
-# try another model
 # try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=10 test acc = 0.7363 - 367 sec - no overfit
 # try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=50 test acc = 0.7800 - 1837 sec - from 20 epochs, overfitting begin
 # try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=20 test acc = 0.7643 - 720.33 sec on CPU, 373 sec on GPU
 # try bigger batch_size 256, steps_per_epoch=110, validation steps=110, 2 dropout layers test acc = 0.7587 - 733
 # try bigger batch_size 256, steps_per_epoch=110, validation steps=55, 4 epochs, 2 dropout layers test acc = 0.7390 - 252 sec
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Convolution2D
-from tensorflow.keras.layers import MaxPooling2D
-from tensorflow.keras.layers import Flatten
-from tensorflow.keras.layers import Dense
-from tensorflow.keras import regularizers
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.layers import Dropout
-import numpy as np
-import time
-import tensorflow as tf
-
-# for GPU proccessing #
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-# end for GPU processing
-
-datagenerator = ImageDataGenerator(rescale=1./255)
-# the original size of the images is 150x150 pixels
-training_set = datagenerator.flow_from_directory('IntelImageData/seg_train',
-                                                target_size=(64, 64),
-                                                class_mode = 'categorical',
-                                                batch_size=256)
-
-test_set = datagenerator.flow_from_directory('IntelImageData/seg_test',
-                                             target_size=(64,64),
-                                             class_mode = 'categorical',
-                                             batch_size=256)
-
 classifier = Sequential()
 classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
@@ -179,33 +120,6 @@ classifier.evaluate_generator(
     use_multiprocessing=False,
     verbose=0
 )
-
-
-# cross validation
-# this module belongs to scikit learn but we are working with keras
-# so we need a module from keras
-from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
-from sklearn.model_selection import cross_val_score
-
-def build_classifier():
-    classifier = Sequential()
-    classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
-    classifier.add(MaxPooling2D(pool_size=(2,2)))
-    classifier.add(Flatten())
-    classifier.add(Dropout(0.5))
-    classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-    classifier.add(Dropout(0.5)) # second one
-    classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
-    classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])    
-    return classifier
-
-classifier = KerasClassifier(build_fn=build_classifier,
-                             steps_per_epoch=55,
-                             epochs=10,
-                             validation_data=test_set,
-                             validation_steps=55)
-precisions = cross_val_score(classifier,training_set, cv=10)
-
 
 # visualize the accuracy per class
 
