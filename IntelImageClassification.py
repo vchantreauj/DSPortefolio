@@ -111,15 +111,119 @@ plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 # training curve is below validation: no overfitting
 
-classifier.evaluate_generator(
-    generator=test_set,
-    steps=None,
-    callbacks=None,
-    max_queue_size=10,
-    workers=1,
-    use_multiprocessing=False,
-    verbose=0
-)
+# 3 hidden layers and 2 conv layers test acc = 0.814 - 360 sec
+classifier = Sequential()
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Flatten())
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5)) # second one
+classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
 
-# visualize the accuracy per class
+classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
+t0 = time.time()
+history = classifier.fit_generator(
+        training_set,
+        steps_per_epoch=55,
+        epochs=20,
+        validation_data=test_set,
+        validation_steps=55)
+t1 = time.time()
+print("took %0.2f seconds"% (t1 - t0))
+
+score = classifier.evaluate(test_set)
+
+# visualize the accuracy history
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper left')
+plt.show()
+# model ok, no overfitting
+
+# 3 hidden layers and 3 conv layers test acc = 0.818 - 358 sec
+classifier = Sequential()
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Flatten())
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5)) # second one
+classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
+
+classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
+t0 = time.time()
+history = classifier.fit_generator(
+        training_set,
+        steps_per_epoch=55,
+        epochs=20,
+        validation_data=test_set,
+        validation_steps=55)
+t1 = time.time()
+print("took %0.2f seconds"% (t1 - t0))
+
+score = classifier.evaluate(test_set)
+
+# visualize the accuracy history
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper left')
+plt.show()
+
+# 4 hidden layers and 3 conv layers test acc = 0.825 - 361 sec
+classifier = Sequential()
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(MaxPooling2D(pool_size=(2,2)))
+classifier.add(Flatten())
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5))
+classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Dropout(0.5)) # second one
+classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
+
+classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
+t0 = time.time()
+history = classifier.fit_generator(
+        training_set,
+        steps_per_epoch=55,
+        epochs=20,
+        validation_data=test_set,
+        validation_steps=55)
+t1 = time.time()
+print("took %0.2f seconds"% (t1 - t0))
+
+score = classifier.evaluate(test_set)
+
+# visualize the accuracy history
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('model accuracy')
+plt.ylabel('accuracy')
+plt.xlabel('epoch')
+plt.legend(['train', 'validation'], loc='upper left')
+plt.show()
+
 
