@@ -28,6 +28,7 @@ from tensorflow.keras.layers import Dropout
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import tensorflow as tf
 
 
 # softmax activation function for the last hidden layer and loss=categorical_crossentropy are required for the classification of more than 2 categoriries (not binary)
@@ -105,8 +106,27 @@ plt.show()
 # try another model
 # try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=10 test acc = 0.7363 - 367 sec - no overfit
 # try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=50 test acc = 0.7800 - 1837 sec - from 20 epochs, overfitting begin
+# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=20 test acc = 0.7643 - 720.33 sec on CPU, 373 sec on GPU
 # try bigger batch_size 256, steps_per_epoch=110, validation steps=110, 2 dropout layers test acc = 0.7587 - 733
 # try bigger batch_size 256, steps_per_epoch=110, validation steps=55, 4 epochs, 2 dropout layers test acc = 0.7390 - 252 sec
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Convolution2D
+from tensorflow.keras.layers import MaxPooling2D
+from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import Dense
+from tensorflow.keras import regularizers
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.layers import Dropout
+import numpy as np
+import time
+import tensorflow as tf
+
+# for GPU proccessing #
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+assert len(physical_devices) > 0, "Not enough GPU hardware devices available"
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+# end for GPU processing
+
 datagenerator = ImageDataGenerator(rescale=1./255)
 # the original size of the images is 150x150 pixels
 training_set = datagenerator.flow_from_directory('IntelImageData/seg_train',
@@ -118,6 +138,7 @@ test_set = datagenerator.flow_from_directory('IntelImageData/seg_test',
                                              target_size=(64,64),
                                              class_mode = 'categorical',
                                              batch_size=256)
+
 classifier = Sequential()
 classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
@@ -131,7 +152,7 @@ t0 = time.time()
 history = classifier.fit_generator(
         training_set,
         steps_per_epoch=55,
-        epochs=50,
+        epochs=20,
         validation_data=test_set,
         validation_steps=55)
 t1 = time.time()
@@ -148,6 +169,43 @@ plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 # training curve is below validation: no overfitting
+
+classifier.evaluate_generator(
+    generator=test_set,
+    steps=None,
+    callbacks=None,
+    max_queue_size=10,
+    workers=1,
+    use_multiprocessing=False,
+    verbose=0
+)
+
+
+# cross validation
+# this module belongs to scikit learn but we are working with keras
+# so we need a module from keras
+from tensorflow.keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.model_selection import cross_val_score
+
+def build_classifier():
+    classifier = Sequential()
+    classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+    classifier.add(MaxPooling2D(pool_size=(2,2)))
+    classifier.add(Flatten())
+    classifier.add(Dropout(0.5))
+    classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+    classifier.add(Dropout(0.5)) # second one
+    classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
+    classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])    
+    return classifier
+
+classifier = KerasClassifier(build_fn=build_classifier,
+                             steps_per_epoch=55,
+                             epochs=10,
+                             validation_data=test_set,
+                             validation_steps=55)
+precisions = cross_val_score(classifier,training_set, cv=10)
+
 
 # visualize the accuracy per class
 
