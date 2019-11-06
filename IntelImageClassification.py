@@ -30,7 +30,6 @@ import numpy as np
 import time
 import tensorflow as tf
 
-
 # softmax activation function for the last hidden layer and loss=categorical_crossentropy are required for the classification of more than 2 categoriries (not binary)
 # batch_size=nb of sample randomly selected from the dataset. the gradient algo will update loss at the end of each batch, so the parameters are updated too.
 # steps_per_epoch=nb training dataset batchs to input per epoch. To have the whole training data set, use at min (size of the training dataset)/(training_set batch_size)
@@ -64,10 +63,10 @@ L_grid = 15
 
 fig, axes = plt.subplots(L_grid, W_grid, figsize=(17,17))
 axes = axes.ravel() # flaten the 15x15 matrix image into 255 array
-# the 14034 images are split into 128 batches (i.e. 439 * 32)
+# the 14034 images are split into 256 batches (i.e. 55 * 256)
 for i in np.arange(W_grid*L_grid):
-    j = np.random.randint(0,110)
-    k = np.random.randint(0,128)
+    j = np.random.randint(0,55)
+    k = np.random.randint(0,256)
     label = np.where(training_set[j][1][k] == 1)[0][0]
     axes[i].imshow(training_set[j][0][k])
     axes[i].set_title(dict_label[label], fontsize=8)
@@ -75,124 +74,17 @@ for i in np.arange(W_grid*L_grid):
     
 plt.subplots_adjust(hspace=0.4)
 
-# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=10 test acc = 0.7363 - 367 sec - no overfit
-# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=50 test acc = 0.7800 - 1837 sec - from 20 epochs, overfitting begin
-# try bigger batch_size 256, steps_per_epoch=55, validation steps=55, 2 dropout layers, epochs=20 test acc = 0.7643 - 720.33 sec on CPU, 373 sec on GPU
-# try bigger batch_size 256, steps_per_epoch=110, validation steps=110, 2 dropout layers test acc = 0.7587 - 733
-# try bigger batch_size 256, steps_per_epoch=110, validation steps=55, 4 epochs, 2 dropout layers test acc = 0.7390 - 252 sec
+# 3 hidden layers and 2 conv layers with 64 filters test acc = 0.81 - 379 sec
+# 3 hidden layers and 2 conv layers with 128 filters 20 epochs test acc = 0.828 - 677 sec
+# 3 hidden layers and 2 conv layers with 128 filters 40 epochs test acc = 0.84 - 1804 sec
+# ******************************** best model *********************************************
+# 3 hidden layers and 3 conv layers with 128 filters 40 epochs test acc = 0..849 - 1229 sec - no overfitting
 classifier = Sequential()
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+classifier.add(Convolution2D(filters=128,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Flatten())
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5)) # second one
-classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
-t0 = time.time()
-history = classifier.fit_generator(
-        training_set,
-        steps_per_epoch=55,
-        epochs=20,
-        validation_data=test_set,
-        validation_steps=55)
-t1 = time.time()
-print("took %0.2f seconds"% (t1 - t0))
-
-score = classifier.evaluate(test_set)
-
-# visualize the accuracy history
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
-plt.show()
-# training curve is below validation: no overfitting
-
-# 3 hidden layers and 2 conv layers test acc = 0.814 - 360 sec
-classifier = Sequential()
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
+classifier.add(Convolution2D(filters=128,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Flatten())
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5)) # second one
-classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
-
-classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
-t0 = time.time()
-history = classifier.fit_generator(
-        training_set,
-        steps_per_epoch=55,
-        epochs=20,
-        validation_data=test_set,
-        validation_steps=55)
-t1 = time.time()
-print("took %0.2f seconds"% (t1 - t0))
-
-score = classifier.evaluate(test_set)
-
-# visualize the accuracy history
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
-plt.show()
-# model ok, no overfitting
-
-# 3 hidden layers and 3 conv layers test acc = 0.818 - 358 sec
-classifier = Sequential()
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Flatten())
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5)) # second one
-classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
-
-classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
-t0 = time.time()
-history = classifier.fit_generator(
-        training_set,
-        steps_per_epoch=55,
-        epochs=20,
-        validation_data=test_set,
-        validation_steps=55)
-t1 = time.time()
-print("took %0.2f seconds"% (t1 - t0))
-
-score = classifier.evaluate(test_set)
-
-# visualize the accuracy history
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'validation'], loc='upper left')
-plt.show()
-
-# 4 hidden layers and 3 conv layers test acc = 0.825 - 361 sec
-classifier = Sequential()
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(MaxPooling2D(pool_size=(2,2)))
-classifier.add(Convolution2D(filters=32,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
+classifier.add(Convolution2D(filters=128,kernel_size=(3,3),activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
 classifier.add(Flatten())
 classifier.add(Dropout(0.5))
@@ -200,8 +92,6 @@ classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularize
 classifier.add(Dropout(0.5))
 classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
 classifier.add(Dropout(0.5))
-classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularizers.l2(l = 0.001)))
-classifier.add(Dropout(0.5)) # second one
 classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
 
 classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
@@ -209,7 +99,7 @@ t0 = time.time()
 history = classifier.fit_generator(
         training_set,
         steps_per_epoch=55,
-        epochs=20,
+        epochs=40,
         validation_data=test_set,
         validation_steps=55)
 t1 = time.time()
@@ -217,7 +107,7 @@ print("took %0.2f seconds"% (t1 - t0))
 
 score = classifier.evaluate(test_set)
 
-# visualize the accuracy history
+# visualize the accuracy history - check overfitting
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
 plt.title('model accuracy')
@@ -225,5 +115,3 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
-
-
