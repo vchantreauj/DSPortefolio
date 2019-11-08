@@ -115,3 +115,45 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
+
+# visualize prediction
+predicted_classes = classifier.predict(test_set) 
+L_grid = 7
+W_grid = 7
+
+fig, axes = plt.subplots(L_grid, W_grid, figsize=(17,17))
+axes = axes.ravel() # flaten the 15x15 matrix image into 255 array
+# the 3000 images are split into 256 batches (i.e. 12 * 256)
+for i in np.arange(W_grid*L_grid):
+    j = np.random.randint(0,12)
+    k = np.random.randint(0,184)
+    labeltrue = np.where(test_set[j][1][k] == 1)[0][0]
+    labelpred = predicted_classes[j*256+k].argmax()
+    axes[i].imshow(test_set[j][0][k])
+    axes[i].set_title('Prediction = {}\n True = {}'.format(dict_label[labelpred],dict_label[labeltrue]), fontsize=8)
+    axes[i].axis('off')    
+plt.subplots_adjust(hspace=0.4)
+
+# see classes mispredicted
+#flattened y_label which is under batch form in test_set
+true_label = []
+for batch_id in np.arange(12):
+  for el_id in np.arange(len(test_set[batch_id][1])):
+    true_label.append(np.where(test_set[batch_id][1][el_id] == 1)[0][0])
+
+pred_label = []
+for el_id in np.arange(3000):
+  pred_label.append(predicted_classes[el_id].argmax())
+ 
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
+cm = confusion_matrix(pred_label, true_label)
+
+plt.figure(figsize = (5, 5))
+ax = sns.heatmap(cm, annot = True, square=True)
+
+ax.set_ylim(0, 6)  
+plt.xticks(np.arange(6),dict_label,rotation=20)
+plt.yticks(np.arange(6),dict_label,rotation=20)
+
