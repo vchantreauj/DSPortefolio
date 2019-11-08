@@ -130,7 +130,8 @@ for i in np.arange(W_grid*L_grid):
     labeltrue = np.where(test_set[j][1][k] == 1)[0][0]
     labelpred = predicted_classes[j*256+k].argmax()
     axes[i].imshow(test_set[j][0][k])
-    axes[i].set_title('Prediction = {}\n True = {}'.format(dict_label[labelpred],dict_label[labeltrue]), fontsize=8)
+    color = "green" if labelpred == labeltrue else "red"
+    axes[i].set_title('Prediction = {}\n True = {}'.format(dict_label[labelpred],dict_label[labeltrue]), fontsize=8, color=color)
     axes[i].axis('off')    
 plt.subplots_adjust(hspace=0.4)
 
