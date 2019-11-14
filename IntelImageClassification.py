@@ -45,6 +45,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 datagenerator = ImageDataGenerator(rescale=1./255)
 # the original size of the images is 150x150 pixels
+# file path expected : IntelImageData/seg_train/buildings/*.jpg...
 training_set = datagenerator.flow_from_directory('IntelImageData/seg_train',
                                                 target_size=(64, 64),
                                                 class_mode = 'categorical',
@@ -56,6 +57,7 @@ test_set = datagenerator.flow_from_directory('IntelImageData/seg_test',
                                              batch_size=256)
 
 # visualize the images from the training set
+# if "PIL" error, pip install pillow
 dict_label = ['buildings','forest','glacier', 'mountain', 'sea', 'street']
 
 W_grid = 15
