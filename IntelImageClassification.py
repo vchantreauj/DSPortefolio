@@ -12,7 +12,7 @@ This is image data of Natural Scenes around the world.
 Content
 -------
 This Data contains around 25k images of size 150x150 distributed under 6 categories. {'buildings' -> 0, 'forest' -> 1, 'glacier' -> 2, 'mountain' -> 3, 'sea' -> 4, 'street' -> 5 }
-The Train, Test and Prediction data is separated in each zip files. There are around 14k images in Train, 3k in Test and 7k in Prediction. 
+The Train, Test and Prediction data is separated in each zip files. There are around 14k images in Train, 3k in Test and 7k in Prediction.
 This data was initially published on https://datahack.analyticsvidhya.com by Intel to host a Image classification Challenge.
 """
 
@@ -30,11 +30,22 @@ import numpy as np
 import time
 import tensorflow as tf
 
-# softmax activation function for the last hidden layer and loss=categorical_crossentropy are required for the classification of more than 2 categoriries (not binary)
-# batch_size=nb of sample randomly selected from the dataset. the gradient algo will update loss at the end of each batch, so the parameters are updated too.
-# steps_per_epoch=nb training dataset batchs to input per epoch. To have the whole training data set, use at min (size of the training dataset)/(training_set batch_size)
-# steps_per_epochs corresponds to the number of time per epoch that the parameters will be updated.
-# validation_steps=nb validation dataset batchs to calcul the loss function at the end of each epoch. Not used to train the model. Usefull the detect overfitting.
+# softmax activation function for the last hidden layer and 
+#   loss=categorical_crossentropy are required for the classification of more
+#   than 2 categories (not binary)
+# batch_size=nb of sample randomly selected from the dataset. the gradient 
+#   algo will update loss at the end of each batch, so the parameters are 
+#   updated too.
+#   batch_size depend on the memory space avalaible and the GPU power: 
+#   the more GPU memory/GPU avalaible, the bigger the batch_size
+# steps_per_epoch=nb training dataset batchs to input per epoch. To have the 
+#   whole training data set, use at min 
+#   (size of the training dataset)/(training_set batch_size)
+#   steps_per_epochs corresponds to the number of time per epoch that the 
+#   parameters will be updated.
+# validation_steps=nb validation dataset batchs to calcul the loss function at
+#   the end of each epoch. Not used to train the model. Usefull the detect 
+#   overfitting.
 # ***************************************************************************
 
 # for GPU proccessing #
@@ -73,14 +84,14 @@ for i in np.arange(W_grid*L_grid):
     axes[i].imshow(training_set[j][0][k])
     axes[i].set_title(dict_label[label], fontsize=8)
     axes[i].axis('off')
-    
+
 plt.subplots_adjust(hspace=0.4)
 
 # 3 hidden layers and 2 conv layers with 64 filters test acc = 0.81 - 379 sec
 # 3 hidden layers and 2 conv layers with 128 filters 20 epochs test acc = 0.828 - 677 sec
 # 3 hidden layers and 2 conv layers with 128 filters 40 epochs test acc = 0.84 - 1804 sec
 # ******************************** best model *********************************************
-# 3 hidden layers and 3 conv layers with 128 filters 40 epochs test acc = 0..849 - 1229 sec - no overfitting
+# 3 hidden layers and 3 conv layers with 128 filters 40 epochs test acc = 0.85 - 720 sec (GPU - Linux) - no overfitting
 classifier = Sequential()
 classifier.add(Convolution2D(filters=128,kernel_size=(3,3),input_shape=(64,64,3),activation='relu'))
 classifier.add(MaxPooling2D(pool_size=(2,2)))
@@ -96,14 +107,14 @@ classifier.add(Dense(units=256, activation='relu', kernel_regularizer=regularize
 classifier.add(Dropout(0.5))
 classifier.add(Dense(units=6, activation='softmax',kernel_regularizer=regularizers.l2(l = 0.001)))
 
-classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy']) 
+classifier.compile(optimizer='adam',loss='categorical_crossentropy',metrics=['accuracy'])
 t0 = time.time()
-history = classifier.fit_generator(
+history = classifier.fit( #_generator(
         training_set,
         steps_per_epoch=55,
         epochs=40,
         validation_data=test_set,
-        validation_steps=55)
+        validation_steps=12)#55)
 t1 = time.time()
 print("took %0.2f seconds"% (t1 - t0))
 
@@ -119,7 +130,7 @@ plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
 
 # visualize prediction
-predicted_classes = classifier.predict(test_set) 
+predicted_classes = classifier.predict(test_set)
 L_grid = 7
 W_grid = 7
 
@@ -134,7 +145,7 @@ for i in np.arange(W_grid*L_grid):
     axes[i].imshow(test_set[j][0][k])
     color = "green" if labelpred == labeltrue else "red"
     axes[i].set_title('Prediction = {}\n True = {}'.format(dict_label[labelpred],dict_label[labeltrue]), fontsize=8, color=color)
-    axes[i].axis('off')    
+    axes[i].axis('off')
 plt.subplots_adjust(hspace=0.4)
 
 # see classes mispredicted
@@ -147,7 +158,7 @@ for batch_id in np.arange(12):
 pred_label = []
 for el_id in np.arange(3000):
   pred_label.append(predicted_classes[el_id].argmax())
- 
+
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 
@@ -156,7 +167,7 @@ cm = confusion_matrix(pred_label, true_label)
 plt.figure(figsize = (5, 5))
 ax = sns.heatmap(cm, annot = True, square=True)
 
-ax.set_ylim(0, 6)  
+ax.set_ylim(0, 6)
 plt.xticks(np.arange(6),dict_label,rotation=20)
 plt.yticks(np.arange(6),dict_label,rotation=20)
 
