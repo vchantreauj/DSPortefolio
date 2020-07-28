@@ -12,6 +12,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from tqdm import tqdm
 from torchvision.utils import save_image
+import time
+from datetime import date
 
 class UNet(nn.Module):
     """encoder decoer method to analyse medical images"""
@@ -51,6 +53,7 @@ class UNet(nn.Module):
                     torch.nn.Conv2d(kernel_size=kernel_size, in_channels=mid_channel, out_channels=out_channels, padding=1),
                     torch.nn.ReLU(),
                     torch.nn.BatchNorm2d(out_channels),
+                    torch.nn.Sigmoid(), # ReLU(), #add this to have binary mask as output
                     )
             return  block
     
@@ -134,7 +137,6 @@ def get_val_loss(x_val, y_val):
     loss = F.cross_entropy(outputs, labels)
     return loss.data
 
-
 im = io.imread_collection('data/breast_cancer_cell_seg/Images/*.tif', plugin = 'tifffile')
 mask = io.imread_collection('data/breast_cancer_cell_seg/Masks/*.TIF', plugin = 'tifffile')
 
@@ -145,17 +147,17 @@ height = 892
 width_out = 676
 height_out = 804
 
-nb_im = 50#3
+nb_im = 50
 x_train = []
 labels = []
 for x in range(nb_im):
     x_train.append(im[x][:764,:892])
     labels.append(mask[x][44:720,44:848])
 
-x_train = np.array(x_train)
-x_train = resize(x_train, (x_train.shape[0], 3, x_train.shape[1], x_train.shape[2]))
-labels = np.array(labels)
-labels = resize(labels, (labels.shape[0], labels.shape[1], labels.shape[2]))
+x_train = np.array(x_train)/255
+x_train = np.transpose(x_train,(0,3,1,2))
+labels = np.array(labels)/255
+#labels = np.transpose(labels,(0,3,1,2))
 
 batch_size = 1
 epochs = 1000 
@@ -166,7 +168,7 @@ criterion = torch.nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(unet.parameters(), lr = 0.01, momentum=0.99)
 
 epoch_iter = np.ceil(nb_im / batch_size).astype(int)
-#t = trange(epochs, leave=True)
+t0 = time.time()
 for _ in tqdm(range(epochs)):
     total_loss = 0
     for i in range(epoch_iter):
@@ -177,56 +179,86 @@ for _ in tqdm(range(epochs)):
         batch_train_y = torch.as_tensor(labels[i * batch_size : (i + 1) * batch_size]).long()
         batch_train_x = batch_train_x.cuda()
         batch_train_y = batch_train_y.cuda()
+        print(batch_train_y.shape)
         batch_loss = train_step(batch_train_x , batch_train_y, optimizer, criterion)
         total_loss += batch_loss
         torch.cuda.empty_cache()
 
-unetfile = 'unet'+str(epochs)+'ep.pt'
+t1 = time.time()
+with open('logunet.txt', 'w') as f:
+    f.write("training %d epochs on %d images\n"%(epochs, nb_im))
+    f.write("last total loss %d last batch loss %d \n"%(total_loss, batch_loss))
+    f.write("took %0.2f seconds\n"% (t1 - t0))
+
+print("took %0.2f seconds"% (t1 - t0))
+
+today = date.today()
+unetfile = today.strftime("%y%m%d")+'unet'+str(epochs)+'ep.pt'
 torch.save(unet.state_dict(), unetfile)
 
 # on known data
+imx = batch_train_x.squeeze(0).detach().cpu().numpy()
+plt.imshow(np.transpose(imx, (1,2,0)))
+plt.savefig('outputunet/train_x0.jpg')
 output = unet(batch_train_x)
 outputnp = output.squeeze(0).detach().cpu().numpy()
-plt.imshow(np.transpose(outputnp, (1,2,0))[:,:,0])
-plt.savefig('outputunet/im3.jpg')
+maskim = np.transpose(outputnp, (1,2,0)) > 0.5
+plt.imshow(maskim[:,:,1])
+plt.savefig('outputunet/train_pred01.jpg')
+plt.imshow(maskim[:,:,0])
+plt.savefig('outputunet/train_pred00.jpg')
 targety = batch_train_y.squeeze(0).detach().cpu().numpy()
-plt.imshow(np.transpose(targety, (1,2,0))[:,:,0])
-plt.savefig('outputunet/imy.jpg')
-
+plt.imshow(targety)
+plt.savefig('outputunet/train_y0.jpg')
+torch.cuda.empty_cache()
 # on test data
 x_test = []
 y_test = []
 for x in range(nb_im, len(mask)):
     x_test.append(im[x][:764,:892])
     y_test.append(mask[x][44:720,44:848])
-x_test = np.array(x_test)
-x_test = resize(x_test, (x_test.shape[0], 3, x_test.shape[1], x_test.shape[2]))
-y_test = np.array(y_test)
-y_test = resize(y_test, (y_test.shape[0], y_test.shape[1], y_test.shape[2]))
+
 j=0
+x_test = np.array(x_test)
+x_test = np.transpose(x_test,(0,3,1,2))
 batch_test_x = torch.as_tensor(x_test[j * batch_size : (j + 1) * batch_size]).float()
-batch_test_y = torch.as_tensor(y_test[j * batch_size : (j + 1) * batch_size]).long()
 batch_test_x = batch_test_x.cuda()
+test_xnp = batch_test_x.squeeze(0).detach().cpu().numpy()
+y_test = np.array(y_test)
+#y_test = np.transpose(y_test,(0,3,1,2))
+batch_test_y = torch.as_tensor(y_test[j * batch_size : (j + 1) * batch_size]).long()
 batch_test_y = batch_test_y.cuda()
+test_ynp = batch_test_y.squeeze(0).detach().cpu().numpy()
+torch.cuda.empty_cache()
 test_pred = unet(batch_test_x)
 test_pred = test_pred.squeeze(0).detach().cpu().numpy()
-plt.imshow(np.transpose(test_pred, (1,2,0))[:,:,0])
-plt.savefig('outputunet/testpred'+str(j)+'.jpg')
-test_ynp = batch_test_y.squeeze(0).detach().cpu().numpy()
-plt.imshow(np.transpose(test_ynp, (1,2,0))[:,:,0])
+plt.imshow(np.transpose(test_xnp, (1,2,0))[:,:,0])
+plt.savefig('outputunet/testx'+str(j)+'.jpg')
+maskim = np.transpose(test_pred, (1,2,0)) > 0.5
+plt.imshow(maskim[:,:,1])
+plt.savefig('outputunet/testpred'+str(j)+'1.jpg')
+plt.imshow(maskim[:,:,0])
+plt.savefig('outputunet/testpred'+str(j)+'0.jpg')
+plt.imshow(test_ynp)
 plt.savefig('outputunet/testy'+str(j)+'.jpg')
-
+torch.cuda.empty_cache()
 
 # load model
+datestr = '200728'
+unetfile = datestr+'unet'+str(epochs)+'ep.pt'
+device = torch.device("cuda")
 unet = UNet(in_channel=3,out_channel=2)
 unet.load_state_dict(torch.load(unetfile))
+unet.to(device)
 unet.eval()
 
     #if (_+1) % epoch_lapse == 0:
     #    val_loss = get_val_loss(x_val, y_val)
     #    print(f"Total loss in epoch {_+1} : {total_loss / epoch_iter} and validation loss : {val_loss}")
 
-
+xori2 = batch_train_x.squeeze(0).detach().cpu().numpy()
+plt.imshow(np.transpose(xori2, (1,2,0)))
+plt.savefig('outputunet/imori2.jpg')
 
 
 def plot_examples(datax, datay, num_examples=3):
