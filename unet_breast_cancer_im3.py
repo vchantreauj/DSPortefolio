@@ -157,7 +157,6 @@ for x in range(nb_im):
 x_train = np.array(x_train)/255
 x_train = np.transpose(x_train,(0,3,1,2))
 labels = np.array(labels)/255
-#labels = np.transpose(labels,(0,3,1,2))
 
 batch_size = 1
 epochs = 1000 
@@ -172,14 +171,10 @@ t0 = time.time()
 for _ in tqdm(range(epochs)):
     total_loss = 0
     for i in range(epoch_iter):
-        #print(i)
-        #batch_train_x = torch.from_numpy(x_train[i * batch_size : (i + 1) * batch_size]).float()
-        #batch_train_y = torch.from_numpy(labels[i * batch_size : (i + 1) * batch_size]).long()
         batch_train_x = torch.as_tensor(x_train[i * batch_size : (i + 1) * batch_size]).float()
         batch_train_y = torch.as_tensor(labels[i * batch_size : (i + 1) * batch_size]).long()
         batch_train_x = batch_train_x.cuda()
         batch_train_y = batch_train_y.cuda()
-        print(batch_train_y.shape)
         batch_loss = train_step(batch_train_x , batch_train_y, optimizer, criterion)
         total_loss += batch_loss
         torch.cuda.empty_cache()
