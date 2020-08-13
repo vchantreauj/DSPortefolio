@@ -7,4 +7,7 @@ IntelImageClassification.py
 BreastCancerClassification.py
 
 ## Image Segmentation with Supervised Learning on high quality image: U-Net method
-unet_breast_cancer_im3.py
+See my repository at vchantreauj/DS_UNET
+
+## Video processing
+See my repository at vchantreauj/DS_video_processing
